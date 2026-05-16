@@ -618,14 +618,7 @@ function addTapFallback(el) {
   });
   el.addEventListener('animationend', () => el.classList.remove('tapped'));
 }
-phoneFrame.querySelectorAll('.gen-btn, .refresh-btn, .ctrl-select, .chord-item').forEach(addTapFallback);
-const tapObserver = new MutationObserver(() => {
-  phoneFrame.querySelectorAll('.chord-item:not([data-tap])').forEach(el => {
-    el.setAttribute('data-tap', '1');
-    addTapFallback(el);
-  });
-});
-tapObserver.observe(phoneFrame, {childList: true, subtree: true});
+phoneFrame.querySelectorAll('.gen-btn, .refresh-btn, .ctrl-select').forEach(addTapFallback);
 
 // ── Parameter Controls ────────────────────────────────
 const root = document.documentElement;

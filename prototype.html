@@ -134,7 +134,6 @@
     display: flex; align-items: center; gap: 0;
     padding: 16px var(--card-pad-x);
     touch-action: manipulation;
-    will-change: transform;
     background: var(--surface);
     border-radius: var(--radius-sm);
     box-shadow: 0 1px 4px rgba(0,0,0,0.06);
@@ -289,8 +288,7 @@ refreshBtn.addEventListener('click',()=>{
 
 // Mac light-tap fallback
 function addTapFallback(el){let wp=false;el.addEventListener('pointerdown',()=>{wp=true});el.addEventListener('click',()=>{if(!wp)el.classList.add('tapped');wp=false});el.addEventListener('animationend',()=>el.classList.remove('tapped'))}
-document.querySelectorAll('.gen-btn,.refresh-btn,.ctrl-select,.chord-item').forEach(addTapFallback);
-new MutationObserver(()=>{liveResult.querySelectorAll('.chord-item:not([data-tap])').forEach(el=>{el.setAttribute('data-tap','1');addTapFallback(el)})}).observe(liveResult,{childList:true,subtree:true});
+document.querySelectorAll('.gen-btn,.refresh-btn,.ctrl-select').forEach(addTapFallback);
 </script>
 
 </body>
