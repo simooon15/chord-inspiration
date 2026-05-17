@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#f0f3ed">
 <title>和弦灵感</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@575&text=和弦灵感调" rel="stylesheet">
 <style>
   :root {
     --bg: #f0f3ed;
@@ -41,8 +44,8 @@
 
   .container {
     width: 100%;
-    max-width: 414px;
-    padding: 72px 24px max(48px, env(safe-area-inset-bottom));
+    max-width: 440px;
+    padding: 52px clamp(16px, 5vw, 24px) max(20px, env(safe-area-inset-bottom));
   }
 
   /* Header */
@@ -55,15 +58,16 @@
     color: var(--accent); margin-right: 2px;
   }
   .header-title {
-    font-family: 'Iowan Old Style', 'Palatino Linotype', 'Palatino', 'Georgia', 'Noto Serif SC', 'Songti SC', serif;
-    font-size: calc(var(--body-size) + 7px); font-weight: 650;
+    font-family: 'Noto Serif SC', 'Songti SC', 'Iowan Old Style', 'Palatino', 'Georgia', serif;
+    font-size: calc(var(--body-size) + 7px); font-weight: 575;
     color: var(--text);
+    letter-spacing: 0.02em;
   }
 
   /* Controls */
   .controls-row {
     display: flex; gap: 8px;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
   }
   .ctrl-select {
     appearance: none; -webkit-appearance: none;
@@ -88,7 +92,7 @@
   }
   .ctrl-select:first-child {
     color: var(--accent);
-    font-family: 'Iowan Old Style', 'Palatino Linotype', 'Palatino', 'Georgia', 'Noto Serif SC', 'Songti SC', serif;
+    font-family: 'Noto Serif SC', 'Songti SC', 'Iowan Old Style', serif;
   }
   .ctrl-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .ctrl-select:active {
@@ -151,8 +155,6 @@
     transform: scale(0.88) !important; transition: transform 0s;
     box-shadow: 0 1px 12px rgba(0,0,0,0.10);
   }
-  .chord-item.tapped { animation: tapPop 0.65s cubic-bezier(0.34,1.80,0.64,1); }
-
   @keyframes chordIn {
     from { opacity: 0; transform: translateX(-8px); }
     to { opacity: 1; transform: translateX(0); }
@@ -214,7 +216,7 @@
   .refresh-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .refresh-btn.tapped { animation: tapPop 0.65s cubic-bezier(0.34,1.80,0.64,1); }
 
-  .footer { text-align: center; padding-top: 24px; font-size: 13px; font-weight: 400; color: rgba(30,38,24,0.22); letter-spacing: 0.04em; }
+  .footer { text-align: center; padding-top: 16px; font-size: 13px; font-weight: 400; color: rgba(30,38,24,0.22); letter-spacing: 0.04em; }
 </style>
 </head>
 <body>
@@ -256,7 +258,7 @@
 
   <button class="refresh-btn" id="refreshBtn">再换一组</button>
 
-  <div class="footer">V1.0</div>
+  <div class="footer">V1.0.1</div>
 </div>
 
 <script src="chords.js"></script>
@@ -272,7 +274,14 @@ keySelect.addEventListener('change',()=>{keySelect.blur();const nk=keySelect.val
 function remap(nk){renderChords(lastProgression.chords.map(c=>transposeChord(c,currentKey,nk)),lastProgression.notes.map(n=>transposeNote(n,currentKey,nk)))}
 function renderChords(chords,notes){
   liveResult.innerHTML=chords.map((c,i)=>`<div class="chord-item"><div class="chord-name">${c}</div><div class="chord-notes">${notes[i]}</div><div class="chord-degree">${String(lastProgression.degrees[i]).replace('b','♭')}</div></div>`).join('');
-  liveResult.querySelectorAll('.chord-item').forEach(el=>{el.classList.add('animate-in')});
+  liveResult.querySelectorAll('.chord-item').forEach(el=>{
+    el.classList.add('animate-in');
+    el.addEventListener('animationend',function cleanup(){
+      el.classList.remove('animate-in');
+      el.style.animation='none';
+      el.removeEventListener('animationend',cleanup);
+    });
+  });
 }
 generateBtn.addEventListener('click',()=>{
   let idx;const pool=progressions[currentStyle];
@@ -286,6 +295,9 @@ refreshBtn.addEventListener('click',()=>{
   lastProgression=pool[idx];
   renderChords(lastProgression.chords.map(c=>transposeChord(c,'C',currentKey)),lastProgression.notes.map(n=>transposeNote(n,'C',currentKey)));
 });
+
+// iOS Safari :active requires touchstart listener
+document.addEventListener('touchstart',()=>{},{passive:true});
 
 // Mac light-tap fallback
 function addTapFallback(el){let wp=false;el.addEventListener('pointerdown',()=>{wp=true});el.addEventListener('click',()=>{if(!wp)el.classList.add('tapped');wp=false});el.addEventListener('animationend',()=>el.classList.remove('tapped'))}

@@ -58,7 +58,7 @@
       radial-gradient(ellipse 60% 50% at 80% 70%, rgba(140,160,120,0.03) 0%, transparent 100%),
       var(--bg);
     border-radius: var(--radius);
-    padding: 72px 24px max(48px, env(safe-area-inset-bottom));
+    padding: 52px clamp(16px, 5vw, 24px) max(20px, env(safe-area-inset-bottom));
     box-shadow:
       0 0 0 1px rgba(0,0,0,0.04),
       0 2px 16px rgba(0,0,0,0.06),
@@ -84,7 +84,7 @@
   /* ── Controls — 8pt grid ────────────── */
   .controls-row {
     display: flex; gap: 8px;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
   }
   .ctrl-select {
     appearance: none; -webkit-appearance: none;
@@ -276,10 +276,6 @@
   .gen-btn.tapped,
   .refresh-btn.tapped,
   .ctrl-select.tapped,
-  .chord-item.tapped {
-    animation: tapPop 0.65s cubic-bezier(0.34,1.80,0.64,1);
-  }
-
   /* ── Footer ──────────────────────────── */
   .footer {
     text-align: center; padding-top: 24px;
@@ -422,7 +418,7 @@
 
     <button class="refresh-btn" id="refreshBtn">再换一组</button>
 
-    <div class="footer">V1.0</div>
+    <div class="footer">V1.0.1</div>
   </div>
 </div>
 
@@ -578,7 +574,15 @@ function renderChords(chords, notes) {
   const surfaceHex = document.getElementById('surface').value;
   const surfaceAlpha = parseFloat(document.getElementById('surfaceAlpha').value);
   const surfaceRgb = hexToRgb(surfaceHex);
-  liveResult.querySelectorAll('.chord-item').forEach(el => el.style.background = `rgba(${surfaceRgb},${surfaceAlpha})`);
+  liveResult.querySelectorAll('.chord-item').forEach(el => {
+    el.style.background = `rgba(${surfaceRgb},${surfaceAlpha})`;
+    el.classList.add('animate-in');
+    el.addEventListener('animationend', function cleanup(){
+      el.classList.remove('animate-in');
+      el.style.animation='none';
+      el.removeEventListener('animationend',cleanup);
+    });
+  });
 }
 
 generateBtn.addEventListener('click', () => {
@@ -729,7 +733,10 @@ document.getElementById('surfaceAlpha').addEventListener('input', updatePreview)
 // Animation replay
 function triggerAnimation() {
   const items = phoneFrame.querySelectorAll('.chord-item');
-  items.forEach(el => el.classList.remove('animate-in'));
+  items.forEach(el => {
+    el.classList.remove('animate-in');
+    el.style.animation = '';
+  });
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       items.forEach(el => el.classList.add('animate-in'));
