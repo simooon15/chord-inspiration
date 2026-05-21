@@ -1,0 +1,6 @@
+{
+  "name": "和弦灵感生成器",
+  "description": "为略懂乐理但卡在套路的音乐爱好者打造的轻量级和弦进行生成与灵感启发工具（含乐理转调、级数解析、和音色预览）。",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

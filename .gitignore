@@ -1,4 +1,11 @@
+node_modules/
+build/
+dist/
+coverage/
 .DS_Store
+*.log
+.env*
+!.env.example
 session.jsonl
 tuner.html
 tuner-liquid-glass-v2.html
