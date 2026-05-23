@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>V2.1 节奏面板原型</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #e8ece4; font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    padding: 40px 16px; -webkit-font-smoothing: antialiased;
+  }
+  .phone-frame {
+    width: 100%; max-width: 440px;
+    padding: 0 clamp(16px, 5vw, 24px);
+    padding-top: 20px; padding-bottom: 20px;
+  }
+
+  /* ---- 页面标题 ---- */
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .page-title {
+    font-size: 22px; font-weight: 600; font-family: 'Noto Serif SC', 'Iowan Old Style', serif;
+    color: #1e2618; letter-spacing: 0.02em;
+  }
+  .header-btn {
+    width: 36px; height: 36px; border-radius: 50%; border: none;
+    background: transparent; color: #6b7862; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s;
+  }
+  .header-btn:hover { background: rgba(79, 109, 58, 0.1); color: #4f6d3a; }
+
+  /* ---- 选择器行 ---- */
+  .selectors-row { display: flex; gap: 10px; margin-bottom: 24px; }
+  .selector {
+    flex: 1; appearance: none; cursor: pointer; outline: none;
+    background: rgba(255,255,255,0.54); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(228,235,224,0.3); border-radius: 9999px;
+    padding: 10px 36px 10px 14px;
+    font-size: 14.5px; font-weight: 500; color: #1e2618;
+    font-family: 'Noto Serif SC', 'Iowan Old Style', serif;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7862' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center;
+  }
+
+  /* ---- 和弦卡片 ---- */
+  .chord-card {
+    background: #fafdf6; border-radius: 20px; padding: 20px 24px;
+    border: 1px solid rgba(228,235,224,0.3);
+    box-shadow: 0 1px 3px rgba(30,38,24,0.02);
+    margin-bottom: 14px; cursor: pointer;
+    transition: background 0.3s, box-shadow 0.3s;
+  }
+  .chord-card.active {
+    background: #e4ebe0;
+    box-shadow: 0 4px 12px rgba(30,38,24,0.06), 0 0 0 2px rgba(79,109,58,0.15);
+  }
+  .chord-card.breathing {
+    animation: breathe 0.6s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.008); }
+  }
+  .chord-card-row { display: flex; align-items: center; justify-content: space-between; }
+  .chord-name {
+    width: 85px; font-size: 32px; font-weight: 700; color: #1e2618;
+    font-family: 'Noto Serif SC', 'Iowan Old Style', serif; line-height: 1;
+  }
+  .chord-notes { flex: 1; text-align: center; font-size: 14px; color: #6b7862; letter-spacing: 0.05em; }
+  .chord-degree {
+    width: 48px; text-align: right; font-size: 17px; font-weight: 600; color: #6b7862;
+    font-family: 'Noto Serif SC', 'Iowan Old Style', serif;
+  }
+
+  /* ---- 和弦时长滑块（集成在播放栏内部） ---- */
+  .speed-section {
+    overflow: hidden; transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .speed-section.hidden { max-height: 0; opacity: 0; margin: 0; padding: 0; }
+  .speed-section.visible { max-height: 60px; opacity: 1; }
+  .speed-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 0 0 0; margin-top: 8px;
+    border-top: 1px solid rgba(228,235,224,0.5);
+  }
+  .speed-label { font-size: 11px; font-weight: 600; color: #6b7862; white-space: nowrap; }
+  .speed-slider {
+    flex: 1; -webkit-appearance: none; appearance: none;
+    height: 6px; background: #e4ebe0; border-radius: 9999px; outline: none; cursor: pointer;
+  }
+  .speed-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 16px; height: 16px; background: #4f6d3a; border-radius: 50%; cursor: pointer;
+    box-shadow: 0 2px 4px rgba(79,109,58,0.3);
+  }
+  .speed-slider::-moz-range-thumb {
+    width: 16px; height: 16px; background: #4f6d3a; border-radius: 50%;
+    cursor: pointer; border: none; box-shadow: 0 2px 4px rgba(79,109,58,0.3);
+  }
+  .speed-value { font-size: 13px; font-weight: 600; color: #4f6d3a; min-width: 36px; text-align: right; }
+
+  /* ---- 播放栏 ---- */
+  .playback-bar {
+    background: rgba(250,253,246,0.4); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(228,235,224,0.6); border-radius: 22px;
+    padding: 12px 20px; margin-top: 12px;
+  }
+  .playback-btn-row {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .play-btn {
+    width: 100px; padding: 6px 0; border: none; border-radius: 9999px; cursor: pointer;
+    font-size: 10.5px; font-weight: 700; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+  }
+  .play-btn.play { background: rgba(79,109,58,0.1); color: #4f6d3a; }
+  .play-btn.play:hover { background: rgba(79,109,58,0.18); }
+  .play-btn.stop { background: rgba(244,63,94,0.1); color: #e11d48; }
+  .play-btn.stop:hover { background: rgba(244,63,94,0.2); }
+  .bar-btn {
+    padding: 6px 12px; border: none; border-radius: 9999px; cursor: pointer;
+    font-size: 10.5px; font-weight: 600; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+  }
+  .bar-btn-ghost { background: rgba(79,109,58,0.1); color: #4f6d3a; }
+  .bar-btn-ghost:hover { background: rgba(79,109,58,0.18); }
+  .bar-btn-ghost.on { background: #4f6d3a; color: white; }
+
+  /* ---- 节奏面板 ---- */
+  .rhythm-panel {
+    background: rgba(250,253,246,0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(228,235,224,0.6); border-radius: 22px; margin-top: 12px;
+    overflow: hidden; transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .rhythm-panel.collapsed {
+    max-height: 0; opacity: 0; margin-top: 0; padding: 0; border: none; pointer-events: none;
+  }
+  .rhythm-panel.expanded {
+    max-height: 600px; opacity: 1; padding: 20px;
+  }
+
+  /* 三开关 */
+  .switch-row { display: flex; gap: 8px; margin-bottom: 16px; }
+  .switch-btn {
+    flex: 1; padding: 10px 0; border: none; border-radius: 9999px; cursor: pointer;
+    font-size: 12px; font-weight: 600; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+  }
+  .switch-btn.off { background: rgba(168,162,158,0.3); color: #6b7862; }
+  .switch-btn.off:hover { background: rgba(168,162,158,0.45); color: #1e2618; }
+  .switch-btn.on {
+    background: #4f6d3a; color: white; box-shadow: 0 4px 8px rgba(79,109,58,0.25);
+  }
+  .switch-btn.on:hover { background: #3d552d; }
+  .switch-icon { width: 14px; height: 14px; }
+
+  /* 节拍器图标脉冲 */
+  .switch-btn.pulse .switch-icon {
+    animation: metronomePulse 0.55s ease-out infinite;
+  }
+  @keyframes metronomePulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+  }
+
+  /* BPM */
+  .bpm-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .bpm-label { font-size: 11px; font-weight: 600; color: #6b7862; white-space: nowrap; }
+  .bpm-slider {
+    flex: 1; -webkit-appearance: none; appearance: none;
+    height: 6px; background: #e4ebe0; border-radius: 9999px; outline: none; cursor: pointer;
+  }
+  .bpm-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 18px; height: 18px; background: #4f6d3a; border-radius: 50%; cursor: pointer;
+    box-shadow: 0 2px 6px rgba(79,109,58,0.3);
+  }
+  .bpm-slider::-moz-range-thumb {
+    width: 18px; height: 18px; background: #4f6d3a; border-radius: 50%;
+    cursor: pointer; border: none; box-shadow: 0 2px 6px rgba(79,109,58,0.3);
+  }
+  .bpm-value { font-size: 18px; font-weight: 700; color: #1e2618; font-variant-numeric: tabular-nums; min-width: 40px; text-align: right; }
+  .bpm-unit { font-size: 9px; font-weight: 400; color: rgba(107,120,98,0.6); }
+
+  /* ---- 拍号 ---- */
+  .time-sig-row { margin-bottom: 16px; display: flex; justify-content: center; }
+  .time-sig-group {
+    display: inline-flex; gap: 4px; padding: 4px;
+    background: rgba(168,162,158,0.3); border-radius: 9999px;
+    border: 1px solid rgba(228,235,224,0.4); position: relative;
+  }
+  .ts-btn {
+    min-width: 58px; padding: 8px 0; border: none; border-radius: 9999px; cursor: pointer;
+    font-size: 13px; font-weight: 600; background: transparent; color: #6b7862;
+    position: relative; z-index: 1; transition: color 0.2s;
+  }
+  .ts-btn.active { color: white; }
+  .ts-pillow {
+    position: absolute; inset: 4px auto 4px 4px;
+    background: #4f6d3a; border-radius: 9999px;
+    box-shadow: 0 2px 4px rgba(79,109,58,0.2); z-index: 0;
+    transition: left 0.35s cubic-bezier(0.34,1.56,0.64,1), width 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  /* ---- 节奏型 ---- */
+  .pattern-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .pattern-label { font-size: 11px; font-weight: 600; color: #6b7862; white-space: nowrap; }
+  .pattern-select-wrap { position: relative; flex: 1; }
+  .pattern-select {
+    width: 100%; padding: 8px 36px 8px 16px;
+    border: 1px solid rgba(228,235,224,0.4); border-radius: 9999px;
+    background: rgba(255,255,255,0.8); font-size: 13px; font-weight: 500; color: #1e2618;
+    outline: none; appearance: none; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7862' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center;
+  }
+
+  /* ---- 预览网格 ---- */
+  .grid-container {
+    background: rgba(168,162,158,0.15); border-radius: 12px;
+    padding: 8px 12px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+  }
+  .grid-container::-webkit-scrollbar { display: none; }
+  .grid-inner { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .beat-numbers { display: flex; gap: 0; }
+  .beat-number { font-size: 9px; font-weight: 600; color: rgba(107,120,98,0.7); text-align: center; }
+  .beat-group { display: flex; align-items: center; }
+  .beat-sep { width: 1px; height: 28px; background: rgba(228,235,224,0.8); margin: 0 2px; flex-shrink: 0; }
+  .grid-cell {
+    width: 26px; height: 28px; display: flex; align-items: center; justify-content: center;
+    border-radius: 4px; font-size: 13px; flex-shrink: 0;
+    transition: background 0.2s, color 0.2s, transform 0.15s;
+  }
+  .grid-cell.strong-bg { background: rgba(240,243,237,0.5); }
+  .grid-cell.highlight {
+    background: #4f6d3a !important; color: white !important; transform: scale(1.05);
+  }
+
+  /* ---- 预备拍指示器 ---- */
+  .count-in-bar {
+    text-align: center; padding: 6px 0; margin-bottom: 12px;
+    background: rgba(79,109,58,0.08); border-radius: 9999px;
+    display: none;
+  }
+  .count-in-bar.visible { display: block; }
+  .count-in-text {
+    font-size: 10px; font-weight: 600; color: #4f6d3a;
+    animation: countPulse 1s ease-in-out infinite;
+  }
+  @keyframes countPulse {
+    0%, 100% { opacity: 0.6; } 50% { opacity: 1; }
+  }
+  .count-in-dots { display: inline-flex; gap: 6px; margin-left: 8px; }
+  .count-in-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: #4f6d3a;
+    animation: dotPop 0.4s ease-out;
+  }
+  @keyframes dotPop {
+    0% { transform: scale(0); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* ---- 模式提示 ---- */
+  .mode-hint {
+    text-align: center; font-size: 8.5px; color: rgba(107,120,98,0.5);
+    margin-top: 12px; transition: all 0.3s;
+  }
+
+  /* ---- 底部 ---- */
+  .footer { margin-top: 32px; text-align: center; font-size: 12px; font-weight: 600; letter-spacing: 0.05em; color: rgba(30,38,24,0.15); user-select: none; }
+
+  /* ---- 原型 UI ---- */
+  .state-tabs { display: flex; gap: 6px; margin-bottom: 20px; justify-content: center; flex-wrap: wrap; }
+  .state-tab {
+    padding: 6px 14px; border-radius: 9999px;
+    border: 1px solid rgba(228,235,224,0.5); background: rgba(255,255,255,0.4);
+    font-size: 11px; font-weight: 600; color: #6b7862; cursor: pointer; transition: all 0.2s;
+  }
+  .state-tab.active { background: #4f6d3a; color: white; border-color: #4f6d3a; }
+  .state-tab:hover:not(.active) { background: rgba(79,109,58,0.1); }
+  .proto-label { text-align: center; margin-bottom: 24px; }
+  .proto-label h2 { font-size: 14px; font-weight: 700; color: #1e2618; margin-bottom: 4px; }
+  .proto-label p { font-size: 11px; color: #6b7862; }
+</style>
+</head>
+<body>
+
+<div class="phone-frame">
+  <div class="proto-label">
+    <h2>V2.1 设计原型 · 完整功能展示</h2>
+    <p>纯视觉展示，功能不工作 — 点击按钮切换状态展示</p>
+  </div>
+
+  <div class="state-tabs">
+    <button class="state-tab active" data-state="playing">🎵 试听中</button>
+    <button class="state-tab" data-state="expanded">📋 面板展开</button>
+    <button class="state-tab" data-state="metronome">🥁 纯节拍器</button>
+    <button class="state-tab" data-state="v2mode">⏪ V2.0 模式</button>
+    <button class="state-tab" data-state="collapsed">📁 面板收起</button>
+  </div>
+
+  <!-- ===== 页面标题 ===== -->
+  <div class="page-header">
+    <span class="page-title">和弦灵感</span>
+    <div class="header-actions">
+      <button class="header-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
+      <button class="header-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg></button>
+    </div>
+  </div>
+
+  <!-- ===== 选择器行 ===== -->
+  <div class="selectors-row">
+    <select class="selector"><option>C 调</option><option>Db 调</option><option>D 调</option><option selected>Eb 调</option><option>E 调</option><option>F 调</option><option>F# 调</option><option>G 调</option><option>Ab 调</option><option>A 调</option><option>Bb 调</option><option>B 调</option></select>
+    <select class="selector"><option>流行</option><option selected>民谣</option><option>摇滚</option><option>爵士</option><option>R&amp;B</option></select>
+  </div>
+
+  <!-- ===== 和弦卡片 ===== -->
+  <div class="chord-card" id="card0">
+    <div class="chord-card-row">
+      <div class="chord-name">E♭</div>
+      <div class="chord-notes">E♭ - G - B♭</div>
+      <div class="chord-degree">I</div>
+    </div>
+  </div>
+  <div class="chord-card active" id="card1">
+    <div class="chord-card-row">
+      <div class="chord-name">B♭</div>
+      <div class="chord-notes">B♭ - D - F</div>
+      <div class="chord-degree">V</div>
+    </div>
+  </div>
+  <div class="chord-card" id="card2">
+    <div class="chord-card-row">
+      <div class="chord-name">Cm</div>
+      <div class="chord-notes">C - E♭ - G</div>
+      <div class="chord-degree">vi</div>
+    </div>
+  </div>
+
+  <!-- ===== 给我灵感按钮 ===== -->
+  <button style="width:100%;padding:14px 0;border:none;border-radius:9999px;background:rgba(79,109,58,0.12);color:#4f6d3a;font-size:15px;font-weight:600;cursor:pointer;margin:8px 0;">给我灵感</button>
+
+  <!-- ===== 播放栏（含和弦时长滑块） ===== -->
+  <div class="playback-bar">
+    <!-- 按钮行 -->
+    <div class="playback-btn-row">
+      <button class="play-btn play" id="playBtn">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span id="playLabel">循环播放</span>
+      </button>
+
+      <button class="bar-btn bar-btn-ghost" id="rhythmToggle">
+        <svg width="12" height="12" id="metronomeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="0.5" fill="currentColor"/><circle cx="18" cy="12" r="0.5" fill="currentColor"/><circle cx="6" cy="12" r="0.5" fill="currentColor"/>
+          <path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/>
+        </svg>
+        节奏
+      </button>
+
+      <button class="bar-btn bar-btn-ghost">纳什维尔</button>
+
+      <button class="bar-btn bar-btn-ghost on">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      </button>
+    </div>
+
+    <!-- 和弦时长滑块（V2.0，节奏型 OFF 时显示） -->
+    <div class="speed-section visible" id="speedSection">
+      <div class="speed-row">
+        <span class="speed-label">和弦时长</span>
+        <input type="range" class="speed-slider" min="1.2" max="2.6" step="0.2" value="1.8">
+        <span class="speed-value">1.8s</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 节奏面板 ===== -->
+  <div class="rhythm-panel expanded" id="rhythmPanel">
+    <!-- 预备拍指示器 -->
+    <div class="count-in-bar visible" id="countInBar">
+      <span class="count-in-text">预备拍</span>
+      <span class="count-in-dots">
+        <span class="count-in-dot" style="animation-delay:0s"></span>
+        <span class="count-in-dot" style="animation-delay:0.15s"></span>
+        <span class="count-in-dot" style="animation-delay:0.3s"></span>
+        <span class="count-in-dot" style="animation-delay:0.45s"></span>
+      </span>
+    </div>
+
+    <!-- 三开关 -->
+    <div class="switch-row">
+      <button class="switch-btn on" data-switch="metronome">
+        <svg class="switch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="0.5" fill="currentColor"/><circle cx="18" cy="12" r="0.5" fill="currentColor"/><circle cx="6" cy="12" r="0.5" fill="currentColor"/>
+          <path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/>
+        </svg>
+        节拍器
+      </button>
+      <button class="switch-btn on" data-switch="rhythm">
+        <svg class="switch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        节奏型
+      </button>
+      <button class="switch-btn on" data-switch="chords">
+        <svg class="switch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        和弦
+      </button>
+    </div>
+
+    <!-- BPM -->
+    <div class="bpm-row">
+      <span class="bpm-label">BPM</span>
+      <input type="range" class="bpm-slider" min="40" max="200" value="108">
+      <div><span class="bpm-value">108</span><span class="bpm-unit"> bpm</span></div>
+    </div>
+
+    <!-- 拍号 -->
+    <div class="time-sig-row">
+      <div class="time-sig-group" id="tsGroup">
+        <button class="ts-btn active" data-ts="4/4">4/4</button>
+        <button class="ts-btn" data-ts="3/4">3/4</button>
+        <button class="ts-btn" data-ts="6/8">6/8</button>
+        <div class="ts-pillow" id="tsPillow"></div>
+      </div>
+    </div>
+
+    <!-- 节奏型选择 -->
+    <div class="pattern-row">
+      <span class="pattern-label">节奏型</span>
+      <div class="pattern-select-wrap">
+        <select class="pattern-select" id="patternSelect">
+          <option value="folk_basic">民谣基础扫弦</option>
+          <option value="folk_soft">民谣轻柔扫弦</option>
+          <option value="rock_strong">摇滚强拍</option>
+          <option value="pop_standard">流行标准扫弦</option>
+          <option value="pop_8th_alt">流行八分交替</option>
+          <option value="pop_ballad">流行抒情</option>
+          <option value="reggae_offbeat">雷鬼反拍</option>
+          <option value="funk_sync">Funk 切分</option>
+          <option value="disco_four">Disco 四拍</option>
+          <option value="folk_bluegrass">民谣蓝草</option>
+          <option value="rock_shuffle">Rock Shuffle</option>
+          <!-- 3/4 -->
+          <option value="waltz_classic">三拍子华尔兹</option>
+          <option value="waltz_soft">三拍子轻柔</option>
+          <!-- 6/8 -->
+          <option value="68_slow">6/8 舒缓</option>
+          <option value="68_flow">6/8 流动</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 预览网格 -->
+    <div class="grid-container">
+      <div class="grid-inner">
+        <div class="beat-numbers" id="beatNumbers"></div>
+        <div style="display:flex;align-items:center;" id="gridRow"></div>
+      </div>
+    </div>
+
+    <!-- 模式提示 -->
+    <div class="mode-hint" id="modeHint">完整试听模式 · 节拍器 + 节奏型 + 和弦</div>
+  </div>
+
+  <div class="footer">V2.1 · 设计原型</div>
+</div>
+
+<script>
+// ===== 和弦卡片呼吸动画 =====
+const cards = [card0, card1, card2];
+let breatheInterval = null;
+
+function startBreathing() { cards.forEach(c => c.classList.add('breathing')); }
+function stopBreathing() { cards.forEach(c => c.classList.remove('breathing')); }
+
+// ===== 状态切换 =====
+const panel = document.getElementById('rhythmPanel');
+const speedSec = document.getElementById('speedSection');
+const playBtn = document.getElementById('playBtn');
+const playLabel = document.getElementById('playLabel');
+const rhythmToggle = document.getElementById('rhythmToggle');
+const countInBar = document.getElementById('countInBar');
+const metronomeSwitch = document.querySelector('[data-switch="metronome"]');
+const rhythmSwitch = document.querySelector('[data-switch="rhythm"]');
+const chordsSwitch = document.querySelector('[data-switch="chords"]');
+const switches = document.querySelectorAll('.switch-btn');
+
+function setAllCards(activeIdx) {
+  cards.forEach((c, i) => {
+    c.classList.toggle('active', i === activeIdx);
+  });
+}
+
+function setPanelExpanded(exp) {
+  panel.classList.toggle('expanded', exp);
+  panel.classList.toggle('collapsed', !exp);
+}
+
+function setSpeedVisible(vis) {
+  speedSec.classList.toggle('visible', vis);
+  speedSec.classList.toggle('hidden', !vis);
+}
+
+function setMetronomePulse(pulse) {
+  metronomeSwitch.classList.toggle('pulse', pulse);
+}
+
+function setCountIn(show) {
+  countInBar.classList.toggle('visible', show);
+}
+
+function setSwitch(s, on) {
+  s.classList.toggle('on', on); s.classList.toggle('off', !on);
+}
+
+document.querySelectorAll('.state-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.state-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const state = tab.dataset.state;
+    stopBreathing(); setMetronomePulse(false); setCountIn(false);
+
+    // Reset: playing state
+    playBtn.className = 'play-btn play';
+    playLabel.textContent = '循环播放';
+    rhythmToggle.classList.remove('on');
+    setAllCards(-1);
+
+    switch (state) {
+      case 'playing':
+        // 完整试听中：三开关全 ON，面板展开，和弦时长滑块隐藏，第2和弦高亮+呼吸，预备拍显示
+        setAllCards(1);
+        setPanelExpanded(true);
+        setSpeedVisible(false);
+        rhythmToggle.classList.add('on');
+        startBreathing();
+        setMetronomePulse(true);
+        setCountIn(true);
+        playBtn.className = 'play-btn stop';
+        playLabel.textContent = '停止试听';
+        setSwitch(metronomeSwitch, true);
+        setSwitch(rhythmSwitch, true);
+        setSwitch(chordsSwitch, true);
+        break;
+
+      case 'expanded':
+        // 面板展开，未播放
+        setPanelExpanded(true);
+        setSpeedVisible(false);
+        rhythmToggle.classList.add('on');
+        setSwitch(metronomeSwitch, true);
+        setSwitch(rhythmSwitch, true);
+        setSwitch(chordsSwitch, true);
+        break;
+
+      case 'metronome':
+        // 纯节拍器模式（无和弦，无需和弦时长滑块）
+        setPanelExpanded(true);
+        setSpeedVisible(false);
+        rhythmToggle.classList.add('on');
+        setSwitch(metronomeSwitch, true);
+        setSwitch(rhythmSwitch, false);
+        setSwitch(chordsSwitch, false);
+        setMetronomePulse(true);
+        playBtn.className = 'play-btn stop';
+        playLabel.textContent = '停止试听';
+        break;
+
+      case 'v2mode':
+        // V2.0 模式：所有开关 OFF，面板收起，和弦时长滑块显示
+        setPanelExpanded(false);
+        setSpeedVisible(true);
+        rhythmToggle.classList.remove('on');
+        setSwitch(metronomeSwitch, false);
+        setSwitch(rhythmSwitch, false);
+        setSwitch(chordsSwitch, false);
+        break;
+
+      case 'collapsed':
+        // 面板收起
+        setPanelExpanded(false);
+        setSpeedVisible(false);
+        rhythmToggle.classList.remove('on');
+        setSwitch(metronomeSwitch, true);
+        setSwitch(rhythmSwitch, true);
+        setSwitch(chordsSwitch, true);
+        break;
+    }
+    updateModeHint();
+  });
+});
+
+// ===== 三开关切换 =====
+switches.forEach(btn => {
+  btn.addEventListener('click', () => {
+    btn.classList.toggle('on');
+    btn.classList.toggle('off');
+    // 脉冲只在节拍器 ON + 播放中时保留
+    updateModeHint();
+  });
+});
+
+function updateModeHint() {
+  const met = metronomeSwitch.classList.contains('on');
+  const rhy = rhythmSwitch.classList.contains('on');
+  const cho = chordsSwitch.classList.contains('on');
+  const hint = document.getElementById('modeHint');
+  if (met && rhy && cho) hint.textContent = '完整试听模式 · 节拍器 + 节奏型 + 和弦';
+  else if (met && rhy && !cho) hint.textContent = '练扫弦模式 · 节拍器 + 节奏型';
+  else if (met && !rhy && !cho) hint.textContent = '纯节拍器模式 · 跟随节拍练琴';
+  else if (met && !rhy && cho) hint.textContent = '节拍器 + 和弦（无节奏型）';
+  else if (!met && rhy && cho) hint.textContent = '节奏型 + 和弦（无声节拍器）';
+  else if (!met && !rhy && cho) hint.textContent = 'V2.0 匀速琶音模式';
+  else hint.textContent = '所有开关已关闭';
+}
+
+// ===== 拍号 =====
+const tsBtns = document.querySelectorAll('.ts-btn');
+const tsPillow = document.getElementById('tsPillow');
+
+function updateTsPillow(activeBtn) {
+  const parent = document.getElementById('tsGroup');
+  const parentRect = parent.getBoundingClientRect();
+  const btnRect = activeBtn.getBoundingClientRect();
+  tsPillow.style.left = (btnRect.left - parentRect.left) + 'px';
+  tsPillow.style.width = btnRect.width + 'px';
+  tsBtns.forEach(b => b.classList.remove('active'));
+  activeBtn.classList.add('active');
+  renderGrid(activeBtn.dataset.ts);
+}
+
+tsBtns.forEach(btn => btn.addEventListener('click', () => updateTsPillow(btn)));
+
+// ===== 节奏型数据 =====
+const PATTERNS = {
+  // 4/4
+  folk_basic: { beats: [{sub:4,slots:['down',null,null,null]},{sub:4,slots:['down',null,'up',null]},{sub:4,slots:['down',null,null,null]},{sub:4,slots:['down',null,'up',null]}] },
+  folk_soft: { beats: [{sub:4,slots:[null,'down',null,null]},{sub:4,slots:['down',null,null,'up']},{sub:4,slots:[null,'down',null,null]},{sub:4,slots:['down',null,'up',null]}] },
+  rock_strong: { beats: [{sub:4,slots:['down',null,null,null]},{sub:4,slots:['down',null,null,null]},{sub:4,slots:['down',null,null,null]},{sub:4,slots:['down',null,null,null]}] },
+  pop_standard: { beats: [{sub:4,slots:['down',null,'up',null]},{sub:4,slots:['down',null,'up',null]},{sub:4,slots:['down',null,'up',null]},{sub:4,slots:['down',null,'up',null]}] },
+  pop_8th_alt: { beats: [{sub:4,slots:['down',null,'up',null]},{sub:4,slots:['up',null,null,null]},{sub:4,slots:['down',null,'up',null]},{sub:4,slots:['up',null,null,null]}] },
+  pop_ballad: { beats: [{sub:4,slots:['down','up',null,null]},{sub:4,slots:['down',null,'up',null]},{sub:4,slots:['down','up',null,null]},{sub:4,slots:['down',null,'up',null]}] },
+  reggae_offbeat: { beats: [{sub:4,slots:[null,'down',null,'up']},{sub:4,slots:['down',null,'up',null]},{sub:4,slots:[null,'down',null,'up']},{sub:4,slots:['down',null,'up',null]}] },
+  funk_sync: { beats: [{sub:4,slots:[null,null,'down','up']},{sub:4,slots:['down',null,'up',null]},{sub:4,slots:['down',null,'up',null]},{sub:4,slots:[null,'up','down','up']}] },
+  disco_four: { beats: [{sub:4,slots:['down',null,'up',null]},{sub:4,slots:['down',null,'up',null]},{sub:4,slots:['down',null,'up',null]},{sub:4,slots:['down',null,'up','down']}] },
+  folk_bluegrass: { beats: [{sub:4,slots:['down','up','down','up']},{sub:4,slots:['down','up','down','up']},{sub:4,slots:['down','up','down','up']},{sub:4,slots:['down','up','down','up']}] },
+  rock_shuffle: { beats: [{sub:4,slots:['down',null,null,null]},{sub:4,slots:[null,'down',null,null]},{sub:4,slots:['down',null,null,null]},{sub:4,slots:[null,'down','up',null]}] },
+  // 3/4
+  waltz_classic: { beats: [{sub:4,slots:['down',null,'up',null]},{sub:4,slots:['down',null,null,null]},{sub:4,slots:['down','up',null,null]}] },
+  waltz_soft: { beats: [{sub:4,slots:['down',null,null,null]},{sub:4,slots:[null,'down','up',null]},{sub:4,slots:['down',null,null,null]}] },
+  // 6/8
+  '68_slow': { beats: [{sub:4,slots:['down',null,null,null]},{sub:4,slots:[null,null,null,null]},{sub:4,slots:['down','up',null,null]},{sub:4,slots:[null,null,null,null]},{sub:4,slots:['down',null,null,null]},{sub:4,slots:[null,null,null,null]}] },
+  '68_flow': { beats: [{sub:4,slots:['down',null,'up',null]},{sub:4,slots:[null,null,null,null]},{sub:4,slots:['down','up','down','up']},{sub:4,slots:[null,null,null,'up']},{sub:4,slots:['down',null,'up',null]},{sub:4,slots:[null,null,null,null]}] }
+};
+
+const PATTERN_TS = {
+  folk_basic:'4/4', folk_soft:'4/4', rock_strong:'4/4', pop_standard:'4/4', pop_8th_alt:'4/4',
+  pop_ballad:'4/4', reggae_offbeat:'4/4', funk_sync:'4/4', disco_four:'4/4', folk_bluegrass:'4/4',
+  rock_shuffle:'4/4', waltz_classic:'3/4', waltz_soft:'3/4', '68_slow':'6/8', '68_flow':'6/8'
+};
+
+function renderGrid(ts) {
+  const patId = document.getElementById('patternSelect').value;
+  const pattern = PATTERNS[patId];
+  if (!pattern) return;
+  const beatNumbersEl = document.getElementById('beatNumbers');
+  const gridRowEl = document.getElementById('gridRow');
+  beatNumbersEl.innerHTML = ''; gridRowEl.innerHTML = '';
+
+  pattern.beats.forEach((beat, bi) => {
+    if (bi > 0) {
+      const sep = document.createElement('div');
+      sep.className = 'beat-sep';
+      gridRowEl.appendChild(sep);
+    }
+    const numSpan = document.createElement('span');
+    numSpan.className = 'beat-number';
+    numSpan.style.width = (beat.slots.length * 26) + 'px';
+    numSpan.textContent = bi + 1;
+    beatNumbersEl.appendChild(numSpan);
+
+    const beatGroup = document.createElement('div');
+    beatGroup.className = 'beat-group';
+    beat.slots.forEach((slot, si) => {
+      const cell = document.createElement('div');
+      let cls = 'grid-cell ' + (slot === 'down' || slot === 'up' ? '' : 'rest');
+      if (bi === 0) cls += ' strong-bg';
+      if (bi === 1 && si === 0) cls += ' highlight';
+      cell.className = cls;
+      if (slot === 'down') { cell.style.color = '#4f6d3a'; }
+      else if (slot === 'up') { cell.style.color = '#4f6d3a'; }
+      else { cell.style.color = '#d0d5cc'; }
+      cell.textContent = slot === 'down' ? '↓' : slot === 'up' ? '↑' : '·';
+      beatGroup.appendChild(cell);
+    });
+    gridRowEl.appendChild(beatGroup);
+  });
+
+  // 重新附加高亮流动动画（先清再重启）
+  if (highlightInterval) clearInterval(highlightInterval);
+  let idx = 0;
+  highlightInterval = setInterval(() => {
+    const cells = document.querySelectorAll('.grid-cell');
+    cells.forEach(c => c.classList.remove('highlight'));
+    if (cells.length > 0) {
+      idx = (idx + 1) % cells.length;
+      cells[idx].classList.add('highlight');
+    }
+  }, 280);
+}
+let highlightInterval = null;
+
+document.getElementById('patternSelect').addEventListener('change', () => {
+  const activeTs = document.querySelector('.ts-btn.active');
+  renderGrid(activeTs ? activeTs.dataset.ts : '4/4');
+});
+
+// ===== BPM 滑块 =====
+document.querySelector('.bpm-slider').addEventListener('input', function() {
+  this.nextElementSibling.querySelector('.bpm-value').textContent = this.value;
+});
+
+// ===== 初始化 =====
+updateTsPillow(document.querySelector('.ts-btn.active'));
+updateModeHint();
+// 默认试听中状态
+setTimeout(() => {
+  document.querySelector('[data-state="playing"]').click();
+}, 200);
+</script>
+</body>
+</html>
