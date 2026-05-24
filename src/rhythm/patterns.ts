@@ -77,15 +77,15 @@ export const ALL_PATTERNS: RhythmPattern[] = [
     timeSignature: '4/4',
     beats: [
       // Bar 1 — D U | D D(重) | D D(重) | D D(重)
-      { subdivision: 4, slots: slots('D.U.'), durations: [3, 0, 1, 0] },  // 下+上，上短
-      { subdivision: 4, slots: slots('D.D.'), durations: [2, 0, 3, 0] },  // 下+下(重音)，重音长
+      { subdivision: 4, slots: slots('D.U.'), durations: [2, 0, 2, 0] },  // 第1拍: 下(标准) + 上(标准)
+      { subdivision: 4, slots: slots('D.D.'), durations: [2, 0, 3, 0] },  // 第2拍: 下(标准) + 下(重音,vel↑)
       { subdivision: 4, slots: slots('D.D.'), durations: [2, 0, 3, 0] },
       { subdivision: 4, slots: slots('D.D.'), durations: [2, 0, 3, 0] },
       // Bar 2 — D D(重) | D D(重) | D D(重) | D · D U(前八后十六)
       { subdivision: 4, slots: slots('D.D.'), durations: [2, 0, 3, 0] },
       { subdivision: 4, slots: slots('D.D.'), durations: [2, 0, 3, 0] },
       { subdivision: 4, slots: slots('D.D.'), durations: [2, 0, 3, 0] },
-      { subdivision: 4, slots: slots('D.DU'), durations: [2, 0, 1, 1] },  // 前八 = 2, 后十六 = 1+1
+      { subdivision: 4, slots: slots('D.DU'), durations: [2, 0, 1, 1] },  // 第4拍: 前八(2) + 十六(1) + 十六(1)
     ],
     barCount: 2,
   },

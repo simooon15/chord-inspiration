@@ -213,7 +213,7 @@ export class AudioSynth {
    * No per-strum noteOff — real guitar strings sustain across strums.
    * Old notes are only cleaned up when chord changes or playback stops.
    */
-  private playStrumSF2(midiNotes: number[], direction: StrumDirection, _holdDurationMs: number): void {
+  private playStrumSF2(midiNotes: number[], direction: StrumDirection, holdDurationMs: number): void {
     if (!this.guitarSynth || !this.guitarReady) return;
 
     const sorted = direction === 'down'
@@ -221,7 +221,13 @@ export class AudioSynth {
       : [...midiNotes].sort((a, b) => b - a).slice(0, 3);
 
     const perStringDelay = direction === 'down' ? 12 : 8;
-    const velocity = direction === 'down' ? 80 : 56;
+    const baseVelocity = direction === 'down' ? 80 : 56;
+
+    // Use holdDurationMs as velocity accent: longer sustain = louder strum
+    // Normalize: at BPM=100 (150ms/16th), duration=1→base, 2→1.15x, 3→1.3x
+    const durUnits = Math.round(holdDurationMs / 150);
+    const accentFactor = Math.min(0.85 + durUnits * 0.15, 1.5);
+    const velocity = Math.round(Math.min(baseVelocity * accentFactor, 127));
 
     // Spread noteOn over time per string to avoid AudioWorklet processing spike
     sorted.forEach((note, i) => {
