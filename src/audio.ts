@@ -60,9 +60,9 @@ export class AudioSynth {
         await ctx.audioWorklet.addModule(`${basePath}worklet/spessasynth_processor.min.js`);
         console.log('[Guitar] Worklet processor loaded');
 
-        // Load SF2 data (stripped 34MB version — contains essential guitar presets)
+        // Load SF2 data (full 88MB version — contains all guitar presets, git LFS)
         console.log('[Guitar] Loading SoundFont...');
-        const resp = await fetch(`${basePath}samples/Guitar_Acoustic_Stripped.sf2`);
+        const resp = await fetch(`${basePath}samples/Acoustic_Guitars_JNv2.4.sf2`);
         if (!resp.ok) throw new Error(`SF2 load failed: HTTP ${resp.status}`);
         const sf2Data = await resp.arrayBuffer();
         console.log('[Guitar] SoundFont loaded:', (sf2Data.byteLength / 1024 / 1024).toFixed(1), 'MB');
