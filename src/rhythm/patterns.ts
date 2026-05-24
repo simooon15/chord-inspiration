@@ -89,6 +89,24 @@ export const ALL_PATTERNS: RhythmPattern[] = [
     ],
     barCount: 2,
   },
+  {
+    id: 'alternative_the_cure',
+    name: 'The Cure · 经典摇滚律动',
+    timeSignature: '4/4',
+    barCount: 2,
+    beats: [
+      // ═══ Bar 1 (Asus2 主律动) ═══
+      { subdivision: 4, slots: slots('DUD.'), durations: [2, 1, 2, 0] },  // 第一拍: 快速 DUD 启动
+      { subdivision: 4, slots: slots('D.D.'), durations: [2, 0, 2, 0] },  // 第二拍: 稳定八分下扫
+      { subdivision: 4, slots: slots('D.D.'), durations: [3, 0, 2, 0] },  // 第三拍: 重音下扫
+      { subdivision: 4, slots: slots('DDD.'), durations: [2, 1, 3, 0] },  // 第四拍: 过渡重音
+      // ═══ Bar 2 (过渡加花) ═══
+      { subdivision: 4, slots: slots('DUD.'), durations: [2, 1, 2, 0] },
+      { subdivision: 4, slots: slots('D.D.'), durations: [2, 0, 2, 0] },
+      { subdivision: 4, slots: slots('D.D.'), durations: [3, 0, 2, 0] },
+      { subdivision: 4, slots: slots('DUDU'), durations: [2, 1, 2, 1] },  // 第四拍: 十六分过渡到下一个和弦
+    ],
+  },
 
   // ════════════════════════════════════════════
   // 3/4 单小节 (5 patterns)
