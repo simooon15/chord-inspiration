@@ -4,6 +4,7 @@
  */
 
 import { WorkletSynthesizer } from 'spessasynth_lib';
+import { StrumOptions } from './rhythm/types';
 
 export type StrumDirection = 'down' | 'up';
 
@@ -186,14 +187,13 @@ export class AudioSynth {
 
   /**
    * Called by RhythmEngine: strum using SF2 if ready, else fallback
-   * @param direction down or up
-   * @param holdDurationMs how long the strummed notes should sustain (ms)
+   * @param opts StrumOptions containing direction, holdDuration, midiNotes, and realism params
    */
-  public playStrumFromEngine(direction: StrumDirection, holdDurationMs: number = 150): void {
+  public playStrumFromEngine(opts: StrumOptions): void {
     if (this.guitarReady && this.guitarSynth) {
-      this.playStrumSF2(this.engineMidiNotes, direction, holdDurationMs);
+      this.playStrumSF2(opts);
     } else {
-      this.playStrum(this.engineMidiNotes, direction, holdDurationMs);
+      this.playStrum(opts.midiNotes, opts.direction, opts.holdDurationMs);
     }
   }
 
@@ -208,29 +208,41 @@ export class AudioSynth {
     }
   }
 
+  // Standard guitar string pitches (low E to high E)
+  private static readonly STRING_PITCHES = [40, 45, 50, 55, 59, 64];
+
   /**
-   * SF2-based strum: plays notes and lets them ring naturally.
-   * No per-strum noteOff — real guitar strings sustain across strums.
-   * Old notes are only cleaned up when chord changes or playback stops.
+   * SF2-based strum: applies variance, stringRange, and strumSpeed for realism.
+   * Notes ring naturally — no per-strum noteOff (real guitar sustain).
    */
-  private playStrumSF2(midiNotes: number[], direction: StrumDirection, holdDurationMs: number): void {
+  private playStrumSF2(opts: StrumOptions): void {
     if (!this.guitarSynth || !this.guitarReady) return;
+    const { midiNotes, direction, holdDurationMs, variance, stringRange, strumSpeed } = opts;
+
+    // 1. Filter notes by string range
+    const [lowStr, highStr] = stringRange;
+    const lowPitch = AudioSynth.STRING_PITCHES[lowStr];
+    const highPitch = AudioSynth.STRING_PITCHES[highStr];
+    const rangeFiltered = midiNotes.filter(n => n >= lowPitch && n <= highPitch);
+    if (rangeFiltered.length === 0) return;
 
     const sorted = direction === 'down'
-      ? [...midiNotes].sort((a, b) => a - b)
-      : [...midiNotes].sort((a, b) => b - a).slice(0, 3);
+      ? [...rangeFiltered].sort((a, b) => a - b)
+      : [...rangeFiltered].sort((a, b) => b - a).slice(0, 3);
 
-    const perStringDelay = direction === 'down' ? 12 : 8;
+    // 2. Strum speed multiplier
+    const perStringDelay = (direction === 'down' ? 12 : 8) * strumSpeed;
+
+    // 3. Base velocity with variance applied
     const baseVelocity = direction === 'down' ? 80 : 56;
-
-    // Use holdDurationMs as velocity accent: longer sustain = louder strum
-    // Normalize: at BPM=100 (150ms/16th), duration=1→base, 2→1.15x, 3→1.3x
     const durUnits = Math.round(holdDurationMs / 150);
     const accentFactor = Math.min(0.85 + durUnits * 0.15, 1.5);
-    const velocity = Math.round(Math.min(baseVelocity * accentFactor, 127));
 
-    // Spread noteOn over time per string to avoid AudioWorklet processing spike
+    // Apply random variance (±0..variance) to each note
     sorted.forEach((note, i) => {
+      const velVariance = variance > 0 ? Math.round((Math.random() * 2 - 1) * variance) : 0;
+      const velocity = Math.round(Math.min(Math.max(baseVelocity * accentFactor + velVariance, 20), 127));
+
       setTimeout(() => {
         if (this.guitarSynth) {
           this.guitarSynth.noteOn(0, note, velocity);
@@ -239,7 +251,6 @@ export class AudioSynth {
     });
 
     // Track held notes for cleanup on chord change / stop
-    // Track all played notes for voice cleanup at chord change
     for (const n of sorted) {
       this.strumHeldNotes.push(n);
       this.allStrumNotes.add(n);

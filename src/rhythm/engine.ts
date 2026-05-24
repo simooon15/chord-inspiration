@@ -1,4 +1,4 @@
-import { RhythmPattern, TickInfo, EngineConfig, ChordMode } from './types';
+import { RhythmPattern, TickInfo, EngineConfig, ChordMode, StrumOptions } from './types';
 import { AudioSynth } from '../audio';
 
 export class RhythmEngine {
@@ -251,10 +251,25 @@ export class RhythmEngine {
       if (beatGrid && this.currentSlot < beatGrid.slots.length) {
         const slot = beatGrid.slots[this.currentSlot];
         if (slot !== null) {
+          const si = this.currentSlot;
           // Note duration from pattern (in 16th-note units), default to 1 tick
-          const durUnits = beatGrid.durations?.[this.currentSlot] ?? 1;
+          const durUnits = beatGrid.durations?.[si] ?? 1;
+          // V2.1.1 realism params (default to neutral if missing)
+          const variance = beatGrid.variance?.[si] ?? 0;
+          const stringRange: [number, number] = beatGrid.stringRange?.[si] ?? [0, 5];
+          const strumSpeed = beatGrid.strumSpeed?.[si] ?? 1.0;
+
+          const opts: StrumOptions = {
+            direction: slot,
+            holdDurationMs: durUnits * this.tickIntervalMs,
+            midiNotes: [...this.currentMidiNotes],
+            variance,
+            stringRange,
+            strumSpeed,
+          };
+
           if (this.chordsOn) {
-            this.audio.playStrumFromEngine(slot, durUnits * this.tickIntervalMs);
+            this.audio.playStrumFromEngine(opts);
           } else {
             this.audio.playMutedStrumFromEngine();
           }

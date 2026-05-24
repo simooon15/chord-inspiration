@@ -17,6 +17,11 @@ interface BeatGrid {
   subdivision: number;    // 每拍子分格数
   slots: StrumSlot[];     // 长度 === subdivision
   durations?: number[];   // [可选] 每个 slot 的持续时长（16分音符单位）
+
+  // V2.1.1 — 扫弦真实感参数（全部可选，不填时行为与 V2.1 一致）
+  variance?: number[];             // 每个 slot 的 velocity ±随机波动，默认 0
+  stringRange?: [number, number][]; // 每个 slot 的弦域范围 [低弦, 高弦]，0=低音E弦，5=高音E弦，默认 [0,5]
+  strumSpeed?: number[];           // 每个 slot 的扫弦速度倍率，>1=更慢/松弛，<1=更快/急促，默认 1.0
 }
 
 interface RhythmPattern {
@@ -40,6 +45,20 @@ duration → velocity 映射（在 audio.ts playStrumSF2 中计算）:
   ├─ duration=2 (300ms)  → ×1.15 中等重音（down≈92, up≈64）
   ├─ duration=3 (450ms)  → ×1.3  强重音（down≈104, up≈72）
   └─ duration=4 (600ms)  → ×1.45 超强重音（down≈116, up≈81）
+
+variance → 在每个 slot 触发时，velocity 叠加 ±random(0~N) 的随机偏移
+  打破完全一致的复读感，每次循环力度有微小自然变化
+
+stringRange → 控制该 slot 扫哪几根弦
+  ├─ [0,5]=全扫6根（默认）
+  ├─ [0,2]=只扫低音3根（大鼓感，收着弹）
+  └─ [3,5]=只扫高音3根（清脆，副歌炸开）
+  通过标准吉他弦音高（40,45,50,55,59,64）过滤 MIDI 音符
+
+strumSpeed → 控制该 slot 扫弦的快慢
+  ├─ <1.0 = 更快果断（重拍、强调）
+  ├─ =1.0 = 正常（默认）
+  └─ >1.0 = 更慢松弛（放松段落、铺底）
 
 beats[currentBeat].subdivision → 决定了该拍包含多少个 slot
   当 currentSlot >= subdivision 时 ➜ 进入下一拍
@@ -80,7 +99,12 @@ beat('D...', 'D.DU', '.UD.', 'D.DU'):
   barCount: 1,           // 支持 1 或 2
   beats: [
     // ═══ Bar 1 ═══
-    { subdivision: 4, slots: slots('D...'), durations: [4, 0, 0, 0] },
+    {
+      subdivision: 4, slots: slots('D...'), durations: [4, 0, 0, 0],
+      // V2.1.1 可选字段（不填则使用默认值）：
+      variance: [4, 0, 0, 0],
+      strumSpeed: [0.7, 1, 1, 1],
+    },
     { subdivision: 4, slots: slots('D.DU'), durations: [2, 0, 1, 1] },
     { subdivision: 4, slots: slots('.UD.'), durations: [0, 1, 1, 0] },
     { subdivision: 4, slots: slots('D.DU'), durations: [2, 0, 1, 1] },
@@ -127,6 +151,15 @@ subdivision=2（八分音符粒度，不推荐——无法控制力度）:
 - 同一个 pattern 内，用 duration 差异区分重音和普通音
 - `null slot` 的 duration 写 0（不会被触发）
 
+**预览可视化（App.tsx）**：durations 值在 Pattern 预览网格中反映为不同视觉权重：
+
+| duration | 显示 | 样式 |
+|----------|------|------|
+| 1 | `↓` / `↑` | 正常字重 |
+| 2 | `↓` / `↑` | 加粗 `font-bold` |
+| 3 | `⇓` / `⇑` | 加粗 |
+| 4 | `⇓` / `⇑` | 加粗 + 深色
+
 ### 3. 常见的 8th note 节奏在 subdivision=4 下的写法
 
 | 节奏型 | slot 字符串 | durations | 说明 |
@@ -150,6 +183,74 @@ subdivision=2（八分音符粒度，不推荐——无法控制力度）:
 id: 'folk_basic_2bar',      // 小写kebab，风格_描述_小节数
 name: '光辉岁月·两小节',    // 中文名，可用「·」分隔风格和描述
 ```
+
+### 6. V2.1.1 新增字段
+
+#### 6.1 variance（力度波动）
+
+```typescript
+// 每个 slot 的 velocity 随机偏移量（±0~N）
+variance: [3, 0, 2, 0]  // slot[0]→±3, slot[1]→不变, slot[2]→±2, slot[3]→不变
+```
+
+- **取值范围**: 0~8（推荐 1~4）
+- **不填**: 默认为 0（无随机波动，V2.1 行为）
+- **听感**: 同一 pattern 每次循环力度有微小自然变化，打破 MIDI 感
+- **配置建议**: 重音 slot（duration≥3）配高 variance（3~4），普通 slot 配低 variance（1~2）
+
+#### 6.2 stringRange（弦域控制）
+
+```typescript
+// 每个 slot 扫弦的弦范围 [低音弦索引, 高音弦索引]
+stringRange: [[0,5],[0,0],[0,3],[0,0]] // slot[0]=全扫, slot[2]=低音3根
+```
+
+- **弦索引**: 0=低音E弦(40)，1=A弦(45)，2=D弦(50)，3=G弦(55)，4=B弦(59)，5=高音E弦(64)
+- **不填**: 默认为 `[0, 5]`（全扫）
+- **听感**: 同一和弦在不同拍子上有厚/薄层次对比
+- **配置建议**: 主歌/低音铺底用 `[0,2]`，副歌/高潮用 `[0,5]` 或 `[2,5]`
+
+#### 6.3 strumSpeed（扫弦速度）
+
+```typescript
+// 每个 slot 的扫弦速度倍率（影响 perStringDelay）
+strumSpeed: [0.7, 1, 1, 1]  // slot[0]=更快(0.7×), 其余=正常
+```
+
+- **取值范围**: 0.5~2.0
+- **不填**: 默认为 1.0（正常速度）
+- **基础延迟**: down=12ms/弦，up=8ms/弦
+- **听感**: 强调时快速果断（<1.0），放松时缓慢铺展（>1.0）
+- **配置建议**: 重拍或起手配 0.7~0.85，过渡段配 1.0~1.2
+
+#### 应用示例
+
+```typescript
+// 一个完整的流行扫弦 pattern，包含所有 V2.1.1 字段
+{
+  id: 'pop_demo_v2_1_1',
+  name: '流行扫弦示例·含真实感参数',
+  timeSignature: '4/4',
+  barCount: 1,
+  beats: [
+    {
+      subdivision: 4, slots: slots('D...'), durations: [4, 0, 0, 0],
+      variance: [4, 0, 0, 0],
+      stringRange: [[0,5],[0,0],[0,0],[0,0]],
+      strumSpeed: [0.7, 1, 1, 1],
+    },
+    {
+      subdivision: 4, slots: slots('D.DU'), durations: [2, 0, 1, 1],
+      variance: [2, 0, 1, 2],
+      strumSpeed: [0.85, 1, 1, 1],
+    },
+    { subdivision: 4, slots: slots('.UD.'), durations: [0, 1, 1, 0] },
+    { subdivision: 4, slots: slots('D.DU'), durations: [2, 0, 1, 1] },
+  ],
+}
+```
+
+> 所有新字段均为可选，不填的 pattern 行为与 V2.1 完全一致。
 
 ## 生成例子你想让我帮你测试的话
 
