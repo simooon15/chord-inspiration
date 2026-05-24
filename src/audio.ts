@@ -208,9 +208,6 @@ export class AudioSynth {
     }
   }
 
-  // Standard guitar string pitches (low E to high E)
-  private static readonly STRING_PITCHES = [40, 45, 50, 55, 59, 64];
-
   /**
    * SF2-based strum: applies variance, stringRange, and strumSpeed for realism.
    * Notes ring naturally — no per-strum noteOff (real guitar sustain).
@@ -219,17 +216,18 @@ export class AudioSynth {
     if (!this.guitarSynth || !this.guitarReady) return;
     const { midiNotes, direction, holdDurationMs, variance, stringRange, strumSpeed } = opts;
 
-    // 1. Filter notes by string range — fall back to all notes if filter empties
+    // 1. Apply stringRange via index-based slicing (not pitch — chord voicings vary)
+    //    Sorted midiNotes low→high roughly correspond to string order.
+    //    Normalize stringRange [0-5] into array indices for variable-length note arrays.
+    const sortedAsc = [...midiNotes].sort((a, b) => a - b);
+    const n = sortedAsc.length;
     const [lowStr, highStr] = stringRange;
-    const lowPitch = AudioSynth.STRING_PITCHES[lowStr];
-    const highPitch = AudioSynth.STRING_PITCHES[highStr];
-    let playable = midiNotes.filter(n => n >= lowPitch && n <= highPitch);
-    if (playable.length === 0) {
-      playable = midiNotes; // fallback: chord voicing may be above open-string pitches
-    }
+    const lowIdx = Math.round((lowStr / 5) * (n - 1));
+    const highIdx = Math.round((highStr / 5) * (n - 1));
+    const playable = sortedAsc.slice(lowIdx, highIdx + 1);
 
     const sorted = direction === 'down'
-      ? [...playable].sort((a, b) => a - b)
+      ? playable
       : [...playable].sort((a, b) => b - a).slice(0, 3);
 
     // 2. Strum speed multiplier
