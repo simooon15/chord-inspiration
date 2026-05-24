@@ -24,6 +24,45 @@
 
 ---
 
+## v2.1.1 新特性 — 相比 v2.1 的变化
+
+<details open>
+<summary><b>🎛️ 节奏体验增强 — 扫弦真实感 + UI 动效优化</b></summary>
+
+v2.1.1 是一次 Z 修复版本，聚焦节奏模块的 UI/UX 和扫弦演奏真实感。
+
+### UI/UX 优化
+
+- **📐 节奏面板独立布局** — 节奏面板与"再换一组"按钮分离，展开时通过 `mt-5` 保持视觉距离
+- **🔄 试听控制自动回缩** — 打开节奏面板时，速度滑块以弹簧动效（stiffness=105, damping=11）平滑收拢/展开
+- **⬇️ 展开自动下滑** — 节奏面板展开时 `scrollIntoView` 自动滚动到视野中心
+- **💫 动效 Q 弹化** — 节奏面板展开动画参数与和弦块一致（阻尼从 15 降至 11），首次展开也有进入动画
+- **🏷️ 标题简化** — 网页标题改为"和弦灵感"
+
+### 扫弦真实感增强
+
+- **🎚️ 力度随机波动 (variance)** — 每个扫弦 slot 的 velocity 在 ±N 范围内随机，打破 MIDI 式复读
+- **🎸 弦域控制 (stringRange)** — 控制每个 slot 扫哪几根弦（全扫/低音区/高音区），创造厚薄层次对比
+- **⚡ 扫弦速度 (strumSpeed)** — 控制每个 slot 扫弦快慢，强调时更快果断，放松时缓慢铺展
+- **👁️ 预览力度可视化** — Pattern 预览网格中 durations 值映射为不同箭头符号和字重（↓/⇓/↑/⇑）
+
+### 新增节奏型
+
+| 节奏型 | 说明 |
+|--------|------|
+| The Cure · 原版高动态版 | 切分重音 + 弦域对比 + 扫弦速度变化 |
+| The Cure · 简易民谣版 | 自然力度波动，适合民谣弹唱 |
+
+### 技术亮点
+
+- 向后兼容：现有 pattern 不填新字段 → 行为与 V2.1 完全一致
+- 标准吉他弦音高（40,45,50,55,59,64）过滤实现 stringRange
+- Spring 弹簧参数统一（stiffness:105, damping:11），全模块动效一致
+
+</details>
+
+---
+
 ## v2.1 新特性 — 相比 v2.0 的变化
 
 <details open>
@@ -148,6 +187,7 @@ public/
 
 | 文档 | 版本 | 链接 |
 |------|------|------|
+| PRD | V2.1.1 | [docs/V2.1.1-PRD.md](docs/V2.1.1-PRD.md) |
 | PRD | V2.1 | [docs/V2.1-PRD.md](docs/V2.1-PRD.md) |
 | 设计规范 | V2.1 | [docs/V2.1-DESIGN_SPEC.md](docs/V2.1-DESIGN_SPEC.md) |
 | 技术规范 | V2.1 | [docs/V2.1-TECHNICAL_SPEC.md](docs/V2.1-TECHNICAL_SPEC.md) |
@@ -163,4 +203,4 @@ MIT
 
 ---
 
-**版本**：v2.1 | **在线体验**：[simooon15.github.io/chord-inspiration](https://simooon15.github.io/chord-inspiration/)
+**版本**：v2.1.1 | **在线体验**：[simooon15.github.io/chord-inspiration](https://simooon15.github.io/chord-inspiration/)
