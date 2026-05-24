@@ -187,14 +187,14 @@ public/
 
 | 文档 | 版本 | 链接 |
 |------|------|------|
-| PRD | V2.1.1 | [docs/V2.1.1-PRD.md](docs/V2.1.1-PRD.md) |
-| PRD | V2.1 | [docs/V2.1-PRD.md](docs/V2.1-PRD.md) |
-| 设计规范 | V2.1 | [docs/V2.1-DESIGN_SPEC.md](docs/V2.1-DESIGN_SPEC.md) |
-| 技术规范 | V2.1 | [docs/V2.1-TECHNICAL_SPEC.md](docs/V2.1-TECHNICAL_SPEC.md) |
-| PRD | V2.0 | [docs/V2.0-PRD.md](docs/V2.0-PRD.md) |
-| 设计规范 | V2.0 | [docs/V2.0-DESIGN_SPEC.md](docs/V2.0-DESIGN_SPEC.md) |
-| 技术规范 | V2.0 | [docs/V2.0-TECHNICAL_SPEC.md](docs/V2.0-TECHNICAL_SPEC.md) |
-| 和弦数据字典 | — | [docs/CHORD_DATABASE.md](docs/CHORD_DATABASE.md) |
+| PRD | V2.1.1 | [docs/V2.1.1/V2.1.1-PRD.md](docs/V2.1.1/V2.1.1-PRD.md) |
+| PRD | V2.1 | [docs/V2.1/V2.1-PRD.md](docs/V2.1/V2.1-PRD.md) |
+| 设计规范 | V2.1 | [docs/V2.1/V2.1-DESIGN_SPEC.md](docs/V2.1/V2.1-DESIGN_SPEC.md) |
+| 技术规范 | V2.1 | [docs/V2.1/V2.1-TECHNICAL_SPEC.md](docs/V2.1/V2.1-TECHNICAL_SPEC.md) |
+| PRD | V2.0 | [docs/V2.0/V2.0-PRD.md](docs/V2.0/V2.0-PRD.md) |
+| 设计规范 | V2.0 | [docs/V2.0/V2.0-DESIGN_SPEC.md](docs/V2.0/V2.0-DESIGN_SPEC.md) |
+| 技术规范 | V2.0 | [docs/V2.0/V2.0-TECHNICAL_SPEC.md](docs/V2.0/V2.0-TECHNICAL_SPEC.md) |
+| 和弦数据字典 | — | [docs/others/CHORD_DATABASE.md](docs/others/CHORD_DATABASE.md) |
 | AI 编码指引 | — | [AGENTS.md](AGENTS.md) |
 
 ## 许可
