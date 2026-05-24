@@ -71,6 +71,24 @@ export const ALL_PATTERNS: RhythmPattern[] = [
     beats: beat('D...', 'U...', 'D...', 'U...', 'D...', 'U...', 'D.D.', 'U.D.'),
     barCount: 2,
   },
+  {
+    id: 'pop_flourish_2bar',
+    name: '流行加花·前八后十六',
+    timeSignature: '4/4',
+    beats: [
+      // Bar 1 — all 8th notes: D U | D D | D D | D D
+      { subdivision: 2, slots: slots('DU') },
+      { subdivision: 2, slots: slots('DD') },
+      { subdivision: 2, slots: slots('DD') },
+      { subdivision: 2, slots: slots('DD') },
+      // Bar 2 — 前八后十六加花: D D | D D | D D | D · D U
+      { subdivision: 2, slots: slots('DD') },
+      { subdivision: 2, slots: slots('DD') },
+      { subdivision: 2, slots: slots('DD') },
+      { subdivision: 4, slots: slots('D.DU'), durations: [2, 0, 1, 1] },
+    ],
+    barCount: 2,
+  },
 
   // ════════════════════════════════════════════
   // 3/4 单小节 (5 patterns)
