@@ -1,4 +1,4 @@
-# 和弦灵感生成器 · 整体产品需求文档
+# MASTER-PRD
 
 > 产品需求文档 | Product Requirements Document
 >
