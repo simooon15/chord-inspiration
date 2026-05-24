@@ -4,6 +4,8 @@
 
 **给略懂乐理但卡在套路的爱好者 — 一个不仅能看、还能听和记的完整创作工作台**
 
+**👉 [在线体验 &rarr;](https://simooon15.github.io/chord-inspiration/)** · 当前版本 v2.1.1
+
 </div>
 
 ## 项目背景
@@ -200,7 +202,3 @@ public/
 ## 许可
 
 MIT
-
----
-
-**版本**：v2.1.1 | **在线体验**：[simooon15.github.io/chord-inspiration](https://simooon15.github.io/chord-inspiration/)
