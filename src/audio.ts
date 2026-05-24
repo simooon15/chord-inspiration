@@ -219,16 +219,18 @@ export class AudioSynth {
     if (!this.guitarSynth || !this.guitarReady) return;
     const { midiNotes, direction, holdDurationMs, variance, stringRange, strumSpeed } = opts;
 
-    // 1. Filter notes by string range
+    // 1. Filter notes by string range — fall back to all notes if filter empties
     const [lowStr, highStr] = stringRange;
     const lowPitch = AudioSynth.STRING_PITCHES[lowStr];
     const highPitch = AudioSynth.STRING_PITCHES[highStr];
-    const rangeFiltered = midiNotes.filter(n => n >= lowPitch && n <= highPitch);
-    if (rangeFiltered.length === 0) return;
+    let playable = midiNotes.filter(n => n >= lowPitch && n <= highPitch);
+    if (playable.length === 0) {
+      playable = midiNotes; // fallback: chord voicing may be above open-string pitches
+    }
 
     const sorted = direction === 'down'
-      ? [...rangeFiltered].sort((a, b) => a - b)
-      : [...rangeFiltered].sort((a, b) => b - a).slice(0, 3);
+      ? [...playable].sort((a, b) => a - b)
+      : [...playable].sort((a, b) => b - a).slice(0, 3);
 
     // 2. Strum speed multiplier
     const perStringDelay = (direction === 'down' ? 12 : 8) * strumSpeed;
