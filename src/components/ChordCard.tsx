@@ -15,10 +15,12 @@ interface ChordCardProps {
   index: number;
   isActive: boolean;
   degreeMode: 'nashville' | 'roman';
+  isRhythmMode?: boolean;
+  suppressFingering?: boolean;
   onCardClick: (index: number) => void;
 }
 
-export function ChordCard({ chord, index, isActive, degreeMode, onCardClick }: ChordCardProps) {
+export const ChordCard = React.memo(function ChordCard({ chord, index, isActive, degreeMode, isRhythmMode, suppressFingering, onCardClick }: ChordCardProps) {
   // Play single chord on tap
   const handleTap = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -42,10 +44,10 @@ export function ChordCard({ chord, index, isActive, degreeMode, onCardClick }: C
       id={`chord-card-${index}`}
       onClick={handleTap}
       initial={{ opacity: 0, x: -8 }}
-      animate={{ 
-        opacity: 1, 
-        x: 0, 
-        scale: isActive ? 1.015 : 1,
+      animate={{
+        opacity: 1,
+        x: 0,
+        scale: isActive && isRhythmMode ? [1, 1.008, 1] : isActive ? 1.015 : 1,
         backgroundColor: isActive ? '#e4ebe0' : '#fafdf6'
       }}
       exit={{ opacity: 0, x: 8 }}
@@ -66,7 +68,10 @@ export function ChordCard({ chord, index, isActive, degreeMode, onCardClick }: C
         scale: {
           type: "spring",
           stiffness: 400,
-          damping: 16
+          damping: 16,
+          repeat: isActive && isRhythmMode ? Infinity : 0,
+          duration: 0.6,
+          ease: "easeInOut"
         },
         backgroundColor: {
           duration: 0.2
@@ -102,9 +107,9 @@ export function ChordCard({ chord, index, isActive, degreeMode, onCardClick }: C
         </div>
       </div>
 
-      {/* Expandable Guitar Chord Fingerboard Overlay */}
+      {/* Expandable Guitar Chord Fingerboard Overlay — hidden during rhythmic playback */}
       <AnimatePresence initial={false}>
-        {isActive && (
+        {isActive && !suppressFingering && (
           <motion.div
             initial={{ height: 0, opacity: 0, marginTop: 0 }}
             animate={{ height: 'auto', opacity: 1, marginTop: 12 }}
@@ -235,5 +240,5 @@ export function ChordCard({ chord, index, isActive, degreeMode, onCardClick }: C
       </AnimatePresence>
     </motion.div>
   );
-}
+});
 

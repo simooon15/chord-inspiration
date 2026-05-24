@@ -5,13 +5,12 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  HelpCircle, 
-  Play, 
-  Square, 
-  BookOpen, 
+import {
+  HelpCircle,
+  Play,
+  Square,
+  BookOpen,
   Heart,
-  RotateCcw,
   Mic,
   MicOff,
   FileText,
@@ -20,7 +19,10 @@ import {
   Volume2,
   Check,
   FolderHeart,
-  X
+  X,
+  Clock,
+  Activity,
+  Music,
 } from 'lucide-react';
 
 import { SCALE_KEYS, STYLE_META, CHORD_PROGRESSIONS } from './chordsData';
@@ -29,6 +31,9 @@ import { synth } from './audio';
 import { ChordCard } from './components/ChordCard';
 import { MusicStyle, ProgressionTemplate, TransposedChord, AudioMemoMeta } from './types';
 import { saveAudioMemo, getAudioMemo, deleteAudioMemo } from './utils/db';
+import { RhythmEngine } from './rhythm/engine';
+import { ALL_PATTERNS } from './rhythm/patterns';
+import { TimeSignature } from './rhythm/types';
 
 export default function App() {
   // --- States ---
@@ -108,6 +113,59 @@ export default function App() {
   });
   const [playingMemoId, setPlayingMemoId] = useState<string | null>(null);
 
+  // ── Rhythm Engine State ──
+  const [metronomeOn, setMetronomeOn] = useState(false);
+  const [rhythmOn, setRhythmOn] = useState(false);
+  const [chordsOn, setChordsOn] = useState(true);
+  const [bpm, setBpm] = useState(100);
+  const [timeSignature, setTimeSignature] = useState<string>('4/4');
+  const [selectedPatternId, setSelectedPatternId] = useState('custom_d_ddu_ud_ddu');
+  const [showRhythmPanel, setShowRhythmPanel] = useState(false);
+  const [currentTickBeat, setCurrentTickBeat] = useState(0);
+  const [currentTickSlot, setCurrentTickSlot] = useState(0);
+
+  const engineRef = useRef<RhythmEngine | null>(null);
+  if (!engineRef.current) {
+    engineRef.current = new RhythmEngine(synth);
+  }
+
+  // Initialize SF2 guitar sampler on first interaction with rhythm controls
+  const [guitarInitTriggered, setGuitarInitTriggered] = useState(false);
+  const triggerGuitarInit = useCallback(() => {
+    if (!guitarInitTriggered) {
+      setGuitarInitTriggered(true);
+      synth.initGuitarSampler();
+    }
+  }, [guitarInitTriggered]);
+
+  // Filtered patterns matching current time signature
+  const patternList = useMemo(() => {
+    return ALL_PATTERNS.filter(p => p.timeSignature === timeSignature);
+  }, [timeSignature]);
+
+  // Sync all config to engine during playback (including switch toggles)
+  useEffect(() => {
+    if (isPlaying && rhythmOn && engineRef.current) {
+      const pattern = patternList.find(p => p.id === selectedPatternId) || null;
+      engineRef.current.updateConfig({
+        bpm,
+        timeSignature: timeSignature as any,
+        pattern,
+        metronomeOn,
+        chordsOn,
+        rhythmOn,
+      });
+    }
+  }, [bpm, timeSignature, selectedPatternId, isPlaying, rhythmOn, metronomeOn, chordsOn, patternList]);
+
+  // Auto-select first pattern when time signature changes
+  useEffect(() => {
+    const firstId = patternList[0]?.id;
+    if (firstId && !patternList.some(p => p.id === selectedPatternId)) {
+      setSelectedPatternId(firstId);
+    }
+  }, [timeSignature, patternList, selectedPatternId]);
+
   // References for Media Recorder, active Memo player, and the targeted progression for recording
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -144,14 +202,16 @@ export default function App() {
     );
   }, [currentProgression, currentKeyConfig]);
 
-  // Playback control useEffect
+  // Playback control useEffect (V2.0 non-rhythm mode only)
   useEffect(() => {
+    if (rhythmOn || metronomeOn) return; // Don't interfere with engine-driven playback
+
     if (isPlaying && transposedChords.length > 0) {
       const midiNotesList = transposedChords.map(chord => chord.midiNotes);
       synth.playProgression(midiNotesList, chordDuration, (index) => {
         setActiveChordIndex(index);
       });
-    } else {
+    } else if (!isPlaying) {
       synth.stopAll();
       setActiveChordIndex(-1);
     }
@@ -159,14 +219,72 @@ export default function App() {
     return () => {
       synth.stopAll();
     };
-  }, [isPlaying, transposedChords, chordDuration]);
+  }, [isPlaying, rhythmOn, metronomeOn, transposedChords, chordDuration]);
 
-  // Trigger stop on style/theme shifts or manual stop
+  // ── Handlers ──
+
   const handleStop = useCallback(() => {
     setIsPlaying(false);
     setActiveChordIndex(-1);
+    engineRef.current?.stop();
     synth.stopAll();
+    setCurrentTickBeat(0);
+    setCurrentTickSlot(0);
   }, []);
+
+  // Stable callback for card clicks to avoid unnecessary re-renders
+  const handleCardClick = useCallback((idx: number) => {
+    setActiveChordIndex(prev => prev === idx ? -1 : idx);
+  }, []);
+
+  const handlePlay = useCallback(() => {
+    if (rhythmOn || metronomeOn) {
+      // Rhythm mode: use engine
+      triggerGuitarInit();
+      const engine = engineRef.current!;
+      const pattern = patternList.find(p => p.id === selectedPatternId) || null;
+
+      // Set initial midi notes and chord list for engine-driven chord changes
+      if (transposedChords.length > 0) {
+        synth.setEngineMidiNotes(transposedChords[0].midiNotes);
+        engineRef.current?.setCurrentMidiNotes(transposedChords[0].midiNotes);
+      }
+      engine.setChordMidiNotesList(transposedChords.map(c => c.midiNotes));
+
+      engine.configure({
+        bpm,
+        timeSignature: timeSignature as TimeSignature,
+        pattern,
+        metronomeOn,
+        rhythmOn,
+        chordsOn,
+        chordMode: 'bar',
+      });
+
+      // Throttle tick state updates: only at beat boundaries to reduce re-renders
+      let prevTickSlot = -1;
+      engine.onTick = (info) => {
+        if (info.slot === 0 || info.slot < prevTickSlot) {
+          setCurrentTickBeat(info.beat);
+          setCurrentTickSlot(info.slot);
+        }
+        prevTickSlot = info.slot;
+      };
+
+      engine.onChordChange = (index) => {
+        const idx = index % transposedChords.length;
+        // Engine handles MIDI notes directly; callback only updates UI
+        Promise.resolve().then(() => setActiveChordIndex(idx));
+      };
+
+      engine.start();
+      setIsPlaying(true);
+      setShowRhythmPanel(true);
+    } else {
+      // Non-rhythm mode: original V2.0 behavior
+      setIsPlaying(true);
+    }
+  }, [rhythmOn, bpm, timeSignature, selectedPatternId, metronomeOn, chordsOn, patternList, transposedChords, triggerGuitarInit]);
 
   // Formulate a beautiful progression code name dynamically from its scale degrees
   const getProgressionDisplayName = useCallback((prog: ProgressionTemplate) => {
@@ -904,9 +1022,9 @@ export default function App() {
               index={index}
               isActive={activeChordIndex === index}
               degreeMode={degreeMode}
-              onCardClick={(idx) => {
-                setActiveChordIndex(prev => prev === idx ? -1 : idx);
-              }}
+              isRhythmMode={(metronomeOn || rhythmOn) && isPlaying}
+              suppressFingering={isPlaying && (metronomeOn || rhythmOn)}
+              onCardClick={handleCardClick}
             />
           ))}
         </motion.section>
@@ -918,23 +1036,24 @@ export default function App() {
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
             className="mb-6 px-5 py-4 bg-[#fafdf6]/40 backdrop-blur-md rounded-[22px] border border-[#e4ebe0]/60 flex flex-col gap-4 text-xs text-[#6b7862] animate-fade-in select-none shadow-sm shadow-black/[0.005]"
           >
-            {/* Speed slider block */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between text-[11px] font-bold opacity-75 uppercase tracking-wider font-mono">
-                <span>试听控制 PLAYBACK</span>
-                <span>速度: {chordDuration.toFixed(1)} 秒 / 级</span>
+            {/* Speed slider block (hidden in rhythm mode) */}
+            {!showRhythmPanel && (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between text-[11px] font-bold opacity-75 uppercase tracking-wider font-mono">
+                  <span>试听控制 PLAYBACK</span>
+                  <span>速度: {chordDuration.toFixed(1)} 秒 / 级</span>
+                </div>
+                <input
+                  type="range"
+                  min="1.2"
+                  max="2.6"
+                  step="0.2"
+                  value={chordDuration}
+                  onChange={(e) => setChordDuration(parseFloat(e.target.value))}
+                  className="w-full accent-[#4f6d3a] cursor-pointer h-2 bg-[#e4ebe0] rounded-lg appearance-none outline-none transition-all hover:opacity-100 opacity-90"
+                />
               </div>
-              
-              <input
-                type="range"
-                min="1.2"
-                max="2.6"
-                step="0.2"
-                value={chordDuration}
-                onChange={(e) => setChordDuration(parseFloat(e.target.value))}
-                className="w-full accent-[#4f6d3a] cursor-pointer h-2 bg-[#e4ebe0] rounded-lg appearance-none outline-none transition-all hover:opacity-100 opacity-90"
-              />
-            </div>
+            )}
 
             {/* Buttons row below slider */}
             <div className="flex items-center justify-between gap-3 pt-1 border-t border-[#e4ebe0]/40">
@@ -954,13 +1073,33 @@ export default function App() {
                   whileHover={{ scale: 1.03, backgroundColor: "rgba(79, 109, 58, 0.18)" }}
                   whileTap={{ scale: 0.95 }}
                   transition={{ type: "spring", stiffness: 450, damping: 15 }}
-                  onClick={() => setIsPlaying(true)}
+                  onClick={handlePlay}
                   className="w-[100px] flex items-center justify-center gap-1.5 py-1.5 bg-[#4f6d3a]/10 text-[#4f6d3a] font-bold text-[10.5px] uppercase tracking-wider rounded-full cursor-pointer shrink-0"
                 >
                   <Play size={9} fill="currentColor" className="ml-0.5" />
-                  循环播放
+                  {rhythmOn ? '启动节奏' : '循环播放'}
                 </motion.button>
               )}
+
+              {/* Rhythm Panel Toggle Button (new) */}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ type: "spring", stiffness: 350, damping: 15 }}
+                onClick={() => {
+                  triggerGuitarInit();
+                  setShowRhythmPanel(prev => !prev);
+                }}
+                className={`flex items-center justify-center gap-1 py-1.5 px-3 rounded-full text-[10.5px] font-bold cursor-pointer shrink-0 transition-colors ${
+                  showRhythmPanel || rhythmOn
+                    ? 'bg-[#4f6d3a] text-white shadow-sm'
+                    : 'bg-[#4f6d3a]/10 text-[#4f6d3a] hover:bg-[#4f6d3a]/18'
+                }`}
+                title="节奏面板"
+              >
+                <Clock size={13} />
+                <span>节奏</span>
+              </motion.button>
 
               {/* Notation Switch Toggle with fixed size */}
               <div className="flex items-center gap-1.5">
@@ -979,6 +1118,219 @@ export default function App() {
           </motion.div>
         )}
 
+        {/* ═══════ Rhythm Panel (expandable) ═══════ */}
+        <AnimatePresence initial={false}>
+          {showRhythmPanel && currentProgression && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 110, damping: 15, mass: 0.85 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-3 p-4 bg-[#fafdf6]/60 backdrop-blur-md rounded-[20px] border border-[#e4ebe0]/60 flex flex-col gap-3.5 text-xs select-none">
+
+                {/* Three Switches: Metronome, Rhythm, Chords */}
+                <div className="flex gap-2">
+                  {[
+                    { key: 'metro', label: '节拍器', icon: Clock, on: metronomeOn, toggle: () => { setMetronomeOn(v => !v); triggerGuitarInit(); } },
+                    { key: 'rhythm', label: '节奏型', icon: Activity, on: rhythmOn, toggle: () => {
+                      if (rhythmOn && isPlaying) handleStop();
+                      setRhythmOn(v => !v);
+                      triggerGuitarInit();
+                    } },
+                    { key: 'chord', label: '和弦', icon: Music, on: chordsOn, toggle: () => setChordsOn(v => !v) },
+                  ].map(({ key, label, icon: Icon, on, toggle }) => (
+                    <motion.button
+                      key={key}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 16 }}
+                      onClick={toggle}
+                      aria-pressed={on}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-full text-xs font-semibold cursor-pointer select-none transition-colors ${
+                        on
+                          ? 'bg-[#4f6d3a] text-white shadow-md shadow-[#4f6d3a]/25'
+                          : 'bg-stone-200/50 text-[#6b7862] hover:bg-stone-300/60 hover:text-[#1e2618]'
+                      }`}
+                    >
+                      <Icon size={13} />
+                      <span>{label}</span>
+                    </motion.button>
+                  ))}
+                </div>
+
+                {/* BPM Slider */}
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Clock size={13} className="text-[#6b7862]" />
+                    <span className="text-[11px] font-semibold text-[#6b7862]">BPM</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="40"
+                    max="200"
+                    step="1"
+                    value={bpm}
+                    onChange={(e) => setBpm(parseInt(e.target.value))}
+                    className="flex-1 h-1.5 bg-[#e4ebe0] rounded-full appearance-none outline-none accent-[#4f6d3a] cursor-pointer"
+                  />
+                  <span className="text-[18px] font-bold text-[#1e2618] min-w-[36px] text-right tabular-nums">
+                    {bpm}
+                    <span className="text-[9px] font-normal text-[#6b7862]/60 ml-0.5">bpm</span>
+                  </span>
+                </div>
+
+                {/* Time Signature Selector */}
+                <div className="flex items-center justify-center">
+                  <div className="relative inline-flex gap-1 p-1 bg-stone-200/50 rounded-full border border-[#e4ebe0]/40">
+                    {['4/4', '3/4', '6/8'].map(ts => (
+                      <button
+                        key={ts}
+                        onClick={() => setTimeSignature(ts)}
+                        className="relative min-w-[56px] py-2 rounded-full text-[13px] font-semibold z-10 transition-colors cursor-pointer"
+                        style={{ color: timeSignature === ts ? '#ffffff' : '#6b7862' }}
+                      >
+                        {timeSignature === ts && (
+                          <motion.div
+                            layoutId="ts_pillow"
+                            className="absolute inset-0 bg-[#4f6d3a] rounded-full shadow-sm"
+                            transition={{ type: "spring", stiffness: 380, damping: 22 }}
+                          />
+                        )}
+                        <span className="relative z-10">{ts}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Pattern Selector */}
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] font-semibold text-[#6b7862] shrink-0">节奏型</span>
+                  <div className="relative flex-1">
+                    <select
+                      value={selectedPatternId}
+                      onChange={(e) => setSelectedPatternId(e.target.value)}
+                      className="w-full appearance-none bg-white/80 border border-[#e4ebe0]/40 rounded-full py-2 pl-4 pr-10 text-[13px] font-medium text-[#1e2618] outline-none cursor-pointer focus-within:ring-2 focus-within:ring-[#4f6d3a]/30"
+                      style={{
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%238a8a86' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+                        backgroundRepeat: 'no-repeat',
+                        backgroundPosition: 'right 12px center',
+                      }}
+                    >
+                      {patternList.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Preview Grid */}
+                {(() => {
+                  const pat = patternList.find(p => p.id === selectedPatternId);
+                  if (!pat) return null;
+                  const beatsPerBar = pat.beats.length / pat.barCount;
+                  const barGroups = Array.from({ length: pat.barCount }, (_, i) =>
+                    pat.beats.slice(i * beatsPerBar, (i + 1) * beatsPerBar)
+                  );
+                  const bpms = pat.timeSignature === "6/8" ? 2 : parseInt(pat.timeSignature.split("/")[0]) || 4;
+                  return (
+                    <motion.div
+                      key={pat.id}
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 6 }}
+                      transition={{ type: "spring", stiffness: 220, damping: 18 }}
+                      className="flex flex-col gap-2 mt-1 overflow-x-auto"
+                    >
+                      {barGroups.map((barBeats, barIdx) => (
+                        <div key={barIdx} className="flex flex-col gap-0.5">
+                          {/* Bar label row */}
+                          <div className="flex items-center gap-1">
+                            {pat.barCount > 1 && (
+                              <span className="text-[8px] font-bold text-[#4f6d3a]/50 tracking-wider shrink-0 w-8 text-left">
+                                {barIdx + 1}
+                              </span>
+                            )}
+                            {/* Beat number row */}
+                            <div className="flex items-center" style={{ gap: 0 }}>
+                              {barBeats.map((beat, bi) => {
+                                const globalBi = barIdx * beatsPerBar + bi;
+                                return (
+                                  <span
+                                    key={bi}
+                                    className="text-[9px] font-semibold text-[#6b7862]/70 text-center"
+                                    style={{ width: beat.subdivision * 24 }}
+                                  >
+                                    {bi === 0 ? globalBi + 1 : ""}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          {/* Slots row */}
+                          <div className="flex items-center gap-0">
+                            {pat.barCount > 1 && (
+                              <div className="w-8 shrink-0" />
+                            )}
+                            <div className="flex items-center bg-stone-100/40 rounded-md p-0.5">
+                              {barBeats.map((beat, bi) => {
+                                const globalBi = barIdx * beatsPerBar + bi;
+                                return (
+                                  <React.Fragment key={bi}>
+                                    {bi > 0 && (
+                                      <div
+                                        className={`w-px h-7 ${bi % bpms === 0 ? "bg-[#4f6d3a]/30" : "bg-[#e4ebe0]"}`}
+                                      />
+                                    )}
+                                    {beat.slots.map((slot, si) => {
+                                      const isCurrent = isPlaying && currentTickBeat === globalBi && currentTickSlot === si;
+                                      return (
+                                        <motion.span
+                                          key={si}
+                                          initial={false}
+                                          animate={{
+                                            backgroundColor: isCurrent ? "#4f6d3a" : "transparent",
+                                            scale: isCurrent ? 1.05 : 1,
+                                          }}
+                                          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                                          className={`w-6 h-7 flex items-center justify-center rounded-sm text-[13px] select-none ${globalBi === 0 && si === 0 ? "bg-[#f0f3ed]" : ""}`}
+                                          style={{ color: isCurrent ? "#ffffff" : slot === null ? "#d0d5cc" : "#4f6d3a" }}
+                                        >
+                                          {slot === "down" ? "↓" : slot === "up" ? "↑" : "·"}
+                                        </motion.span>
+                                      );
+                                    })}
+                                  </React.Fragment>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </motion.div>
+                  );
+                })()}
+
+                {/* Adaptive volume indicator */}
+                <AnimatePresence>
+                  {metronomeOn && chordsOn && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="text-center text-[8.5px] text-[#6b7862]/50 font-sans"
+                    >
+                      混合模式 · 节拍器音量自动适配
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+
         {/* Secondary Refresh Action Button */}
         <motion.button
           id="refreshBtn"
@@ -993,7 +1345,7 @@ export default function App() {
 
         {/* Micro Branding Footer */}
         <footer className="footer mt-8 mb-4 text-center text-xs font-semibold tracking-wider text-[#1e2618]/25 select-none">
-          V2.0
+          V2.1
         </footer>
       </div>
 
