@@ -76,16 +76,16 @@ export const ALL_PATTERNS: RhythmPattern[] = [
     name: '流行加花·前八后十六',
     timeSignature: '4/4',
     beats: [
-      // Bar 1 — all 8th notes: D U | D D | D D | D D
-      { subdivision: 2, slots: slots('DU') },
-      { subdivision: 2, slots: slots('DD') },
-      { subdivision: 2, slots: slots('DD') },
-      { subdivision: 2, slots: slots('DD') },
-      // Bar 2 — 前八后十六加花: D D | D D | D D | D · D U
-      { subdivision: 2, slots: slots('DD') },
-      { subdivision: 2, slots: slots('DD') },
-      { subdivision: 2, slots: slots('DD') },
-      { subdivision: 4, slots: slots('D.DU'), durations: [2, 0, 1, 1] },
+      // Bar 1 — D U | D D(重) | D D(重) | D D(重)
+      { subdivision: 4, slots: slots('D.U.'), durations: [3, 0, 1, 0] },  // 下+上，上短
+      { subdivision: 4, slots: slots('D.D.'), durations: [2, 0, 3, 0] },  // 下+下(重音)，重音长
+      { subdivision: 4, slots: slots('D.D.'), durations: [2, 0, 3, 0] },
+      { subdivision: 4, slots: slots('D.D.'), durations: [2, 0, 3, 0] },
+      // Bar 2 — D D(重) | D D(重) | D D(重) | D · D U(前八后十六)
+      { subdivision: 4, slots: slots('D.D.'), durations: [2, 0, 3, 0] },
+      { subdivision: 4, slots: slots('D.D.'), durations: [2, 0, 3, 0] },
+      { subdivision: 4, slots: slots('D.D.'), durations: [2, 0, 3, 0] },
+      { subdivision: 4, slots: slots('D.DU'), durations: [2, 0, 1, 1] },  // 前八 = 2, 后十六 = 1+1
     ],
     barCount: 2,
   },
